@@ -66,11 +66,60 @@
             </div>
           </div>
 
-          <!-- Live Notes -->
-          <div class="summary-box">
-            <h3>Live Notes</h3>
-            <div id="summary-content" class="summary-content">
-              No facts captured yet.
+          <!-- Risk Flags -->
+          <div class="summary-box risk-box">
+            <div class="box-header-row">
+              <h3>Risk & Completeness Flags</h3>
+              <span id="risk-count" class="mini-pill">0</span>
+            </div>
+            <div id="risk-flags" class="risk-flags">
+              <div class="empty-state">No major missing items detected yet.</div>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div class="summary-box badges-box">
+            <div class="box-header-row">
+              <h3>Milestones</h3>
+            </div>
+            <div id="badges-container" class="badges-container">
+              <div class="empty-state">Milestones will appear as facts are completed.</div>
+            </div>
+          </div>
+
+          <!-- Next Steps -->
+          <div class="summary-box next-steps-box">
+            <div class="next-steps-header">
+              <div>
+                <h3>Next Steps</h3>
+                <p class="next-steps-subtext">Actionable filing steps based on what is still missing.</p>
+              </div>
+              <div id="ready-indicator" class="ready-indicator hidden">
+                Ready to File
+              </div>
+            </div>
+
+            <div class="step-filters">
+              <button type="button" class="filter-btn active" data-filter="recommended">Recommended</button>
+              <button type="button" class="filter-btn" data-filter="urgent">Urgent</button>
+              <button type="button" class="filter-btn" data-filter="optional">Optional</button>
+              <button type="button" class="filter-btn" data-filter="archived">Archived</button>
+            </div>
+
+            <div class="steps-meta">
+              <span id="steps-progress-text">0% complete</span>
+              <span id="steps-time-text">0 min remaining</span>
+            </div>
+
+            <div id="steps-container" class="steps-container">
+              <div class="empty-state">No steps yet.</div>
+            </div>
+
+            <div class="step-actions">
+              <button type="button" id="copy-btn" class="ghost-action-btn">Copy Final Complaint</button>
+              <button type="button" id="calendar-btn" class="ghost-action-btn">Add Deadline</button>
+              <button type="button" id="reminder-btn" class="ghost-action-btn">Add Reminder</button>
+              <button type="button" id="email-btn" class="ghost-action-btn">Email Draft</button>
             </div>
           </div>
         </div>
