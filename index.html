@@ -6,60 +6,145 @@
   <title>Workplace Discrimination Claim Builder</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
+  <!-- Floating launcher -->
   <button id="chat-launcher" class="chat-launcher">Open Claim Builder</button>
 
   <div class="page">
-    <div class="card" id="chat-card">
-      <div class="topbar">
-        <div>
-          <h1>Workplace Discrimination Claim Builder</h1>
-          <p class="subtext">
-            Structured EEOC intake assistant for workplace discrimination and retaliation claims.
+    <div class="app-shell">
+
+      <!-- SIDE PANEL -->
+      <aside class="side-panel">
+        <div class="side-card">
+          <div class="badge">EEOC Intake Assistant</div>
+
+          <h2 class="side-title">Your Claim Summary</h2>
+          <p class="side-text">
+            Your information builds here as you answer questions.
           </p>
+
+          <!-- Progress -->
+          <div class="progress-block">
+            <div class="progress-header">
+              <span>Progress</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div id="progress-fill" class="progress-fill"></div>
+            </div>
+          </div>
+
+          <!-- Sections -->
+          <div class="section-list">
+            <div class="section-item" data-section="personal">
+              <span class="section-dot"></span> Personal Information
+            </div>
+            <div class="section-item" data-section="employer">
+              <span class="section-dot"></span> Employer Information
+            </div>
+            <div class="section-item" data-section="basis">
+              <span class="section-dot"></span> Protected Basis
+            </div>
+            <div class="section-item" data-section="dates">
+              <span class="section-dot"></span> Dates of Harm
+            </div>
+            <div class="section-item" data-section="harm">
+              <span class="section-dot"></span> Harmful Treatment
+            </div>
+            <div class="section-item" data-section="comparators">
+              <span class="section-dot"></span> Comparators
+            </div>
+            <div class="section-item" data-section="complaints">
+              <span class="section-dot"></span> Internal Complaints
+            </div>
+            <div class="section-item" data-section="witnesses">
+              <span class="section-dot"></span> Witnesses / Documents
+            </div>
+            <div class="section-item" data-section="particulars">
+              <span class="section-dot"></span> Particulars
+            </div>
+          </div>
+
+          <!-- Live Notes -->
+          <div class="summary-box">
+            <h3>Live Notes</h3>
+            <div id="summary-content" class="summary-content">
+              No facts captured yet.
+            </div>
+          </div>
         </div>
-        <button id="minimize-btn" class="minimize-btn" type="button">–</button>
+      </aside>
+
+      <!-- MAIN CHAT -->
+      <div class="card" id="chat-card">
+
+        <!-- Header -->
+        <div class="topbar">
+          <div class="title-block">
+            <div class="badge">EEOC Intake Assistant</div>
+
+            <h1>Workplace Discrimination Claim Builder</h1>
+
+            <p class="subtext">
+              Structured, step-by-step intake to help you prepare a clear discrimination or retaliation complaint.
+            </p>
+          </div>
+
+          <button id="minimize-btn" class="minimize-btn" type="button">–</button>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer">
+          This tool provides general information and drafting help only. It is not legal advice and does not create an attorney-client relationship.
+        </div>
+
+        <!-- Starter Prompts -->
+        <div class="starter-prompts">
+          <button type="button" class="starter-btn" onclick="fillPrompt('I am trying to file a discrimination claim')">
+            I am trying to file a discrimination claim
+          </button>
+
+          <button type="button" class="starter-btn" onclick="fillPrompt('I was fired and think it was discrimination')">
+            I was fired and think it was discrimination
+          </button>
+
+          <button type="button" class="starter-btn" onclick="fillPrompt('My employer retaliated after I complained')">
+            My employer retaliated after I complained
+          </button>
+
+          <button type="button" class="starter-btn" onclick="fillPrompt('Help me organize my EEOC complaint')">
+            Help me organize my EEOC complaint
+          </button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-row">
+          <button type="button" id="final-doc-btn" class="final-doc-btn">
+            Generate Final Complaint
+          </button>
+
+          <button type="button" id="pdf-btn" class="pdf-btn">
+            Download PDF
+          </button>
+        </div>
+
+        <!-- Chat -->
+        <div id="chat" class="chat"></div>
+
+        <!-- Input -->
+        <form id="chat-form" class="chat-form">
+          <textarea
+            id="user-input"
+            placeholder="Tell your story here..."
+            rows="3"
+            required
+          ></textarea>
+
+          <button type="submit" id="send-btn">Send</button>
+        </form>
+
       </div>
-
-      <div class="disclaimer">
-        This tool provides general information and drafting help only. It is not legal advice and does not create an attorney-client relationship.
-      </div>
-
-      <div class="starter-prompts">
-        <button type="button" class="starter-btn" onclick="fillPrompt('I am trying to file a discrimination claim')">
-          I am trying to file a discrimination claim
-        </button>
-
-        <button type="button" class="starter-btn" onclick="fillPrompt('I was fired and think it was discrimination')">
-          I was fired and think it was discrimination
-        </button>
-
-        <button type="button" class="starter-btn" onclick="fillPrompt('My employer retaliated after I complained')">
-          My employer retaliated after I complained
-        </button>
-
-        <button type="button" class="starter-btn" onclick="fillPrompt('Help me organize my EEOC complaint')">
-          Help me organize my EEOC complaint
-        </button>
-      </div>
-
-      <div class="action-row">
-        <button type="button" id="final-doc-btn" class="final-doc-btn">
-          Generate Final Complaint
-        </button>
-      </div>
-
-      <div id="chat" class="chat"></div>
-
-      <form id="chat-form" class="chat-form">
-        <textarea
-          id="user-input"
-          placeholder="Tell your story here..."
-          rows="3"
-          required
-        ></textarea>
-        <button type="submit" id="send-btn">Send</button>
-      </form>
     </div>
   </div>
 
