@@ -7,34 +7,47 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <button id="chat-launcher" class="chat-launcher">Open Claim Builder</button>
+
   <div class="page">
-    <div class="card">
-      <h1>Workplace Discrimination Claim Builder</h1>
-      <p class="subtext">
-        Describe what happened at work and get help organizing your story.
-      </p>
+    <div class="card" id="chat-card">
+      <div class="topbar">
+        <div>
+          <h1>Workplace Discrimination Claim Builder</h1>
+          <p class="subtext">
+            Structured EEOC intake assistant for workplace discrimination and retaliation claims.
+          </p>
+        </div>
+        <button id="minimize-btn" class="minimize-btn" type="button">–</button>
+      </div>
 
       <div class="disclaimer">
         This tool provides general information and drafting help only. It is not legal advice and does not create an attorney-client relationship.
       </div>
 
-<div class="starter-prompts">
-  <button type="button" class="starter-btn" onclick="fillPrompt('I am trying to file a discrimination claim')">
-    I am trying to file a discrimination claim
-  </button>
+      <div class="starter-prompts">
+        <button type="button" class="starter-btn" onclick="fillPrompt('I am trying to file a discrimination claim')">
+          I am trying to file a discrimination claim
+        </button>
 
-  <button type="button" class="starter-btn" onclick="fillPrompt('I was fired and think it was discrimination')">
-    I was fired and think it was discrimination
-  </button>
+        <button type="button" class="starter-btn" onclick="fillPrompt('I was fired and think it was discrimination')">
+          I was fired and think it was discrimination
+        </button>
 
-  <button type="button" class="starter-btn" onclick="fillPrompt('My employer retaliated after I complained')">
-    My employer retaliated after I complained
-  </button>
+        <button type="button" class="starter-btn" onclick="fillPrompt('My employer retaliated after I complained')">
+          My employer retaliated after I complained
+        </button>
 
-  <button type="button" class="starter-btn" onclick="fillPrompt('Help me organize my EEOC complaint')">
-    Help me organize my EEOC complaint
-  </button>
-</div>
+        <button type="button" class="starter-btn" onclick="fillPrompt('Help me organize my EEOC complaint')">
+          Help me organize my EEOC complaint
+        </button>
+      </div>
+
+      <div class="action-row">
+        <button type="button" id="final-doc-btn" class="final-doc-btn">
+          Generate Final Complaint
+        </button>
+      </div>
 
       <div id="chat" class="chat"></div>
 
@@ -42,7 +55,7 @@
         <textarea
           id="user-input"
           placeholder="Tell your story here..."
-          rows="4"
+          rows="3"
           required
         ></textarea>
         <button type="submit" id="send-btn">Send</button>
