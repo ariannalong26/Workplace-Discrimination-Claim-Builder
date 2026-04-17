@@ -3,18 +3,6 @@ const form = document.getElementById("chat-form");
 const input = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 
-function fillPrompt(text) {
-  input.value = text;
-  form.dispatchEvent(new Event("submit"));
-}
-
-let history = [
-  {
-    role: "assistant",
-    content: "Hi — describe what happened at work, when it happened, who was involved, and why you think it may have been discrimination or retaliation."
-  }
-];
-
 function renderMessage(role, content) {
   const div = document.createElement("div");
   div.className = `message ${role === "user" ? "user" : "bot"}`;
@@ -23,7 +11,22 @@ function renderMessage(role, content) {
   chat.scrollTop = chat.scrollHeight;
 }
 
+let history = [
+  {
+    role: "assistant",
+    content:
+      "Tell me briefly what happened at work. I’ll help organize it step by step and ask one question at a time."
+  }
+];
+
 renderMessage("assistant", history[0].content);
+
+function sendStarter(text) {
+  input.value = text;
+  form.requestSubmit();
+}
+
+window.fillPrompt = sendStarter;
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -35,6 +38,7 @@ form.addEventListener("submit", async (e) => {
   history.push({ role: "user", content: message });
   input.value = "";
   sendBtn.disabled = true;
+  sendBtn.textContent = "Sending...";
 
   try {
     const response = await fetch("/.netlify/functions/chat", {
@@ -51,11 +55,13 @@ form.addEventListener("submit", async (e) => {
       throw new Error(data.error || "Something went wrong.");
     }
 
-    renderMessage("assistant", data.reply);
-    history.push({ role: "assistant", content: data.reply });
+    const reply = data.reply || "I’m sorry, something went wrong.";
+    renderMessage("assistant", reply);
+    history.push({ role: "assistant", content: reply });
   } catch (err) {
     renderMessage("assistant", `Error: ${err.message}`);
   } finally {
     sendBtn.disabled = false;
+    sendBtn.textContent = "Send";
   }
 });
