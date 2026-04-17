@@ -9,8 +9,20 @@ const chatLauncher = document.getElementById("chat-launcher");
 const minimizeBtn = document.getElementById("minimize-btn");
 const progressFill = document.getElementById("progress-fill");
 const progressPercent = document.getElementById("progress-percent");
-const summaryContent = document.getElementById("summary-content");
 const sectionItems = document.querySelectorAll(".section-item");
+
+const riskFlagsContainer = document.getElementById("risk-flags");
+const riskCount = document.getElementById("risk-count");
+const badgesContainer = document.getElementById("badges-container");
+const stepsContainer = document.getElementById("steps-container");
+const stepsProgressText = document.getElementById("steps-progress-text");
+const stepsTimeText = document.getElementById("steps-time-text");
+const readyIndicator = document.getElementById("ready-indicator");
+const filterButtons = document.querySelectorAll(".filter-btn");
+const copyBtn = document.getElementById("copy-btn");
+const calendarBtn = document.getElementById("calendar-btn");
+const reminderBtn = document.getElementById("reminder-btn");
+const emailBtn = document.getElementById("email-btn");
 
 let history = [
   {
@@ -22,15 +34,318 @@ let history = [
 
 const progressKeywords = {
   personal: ["name", "phone", "email", "address", "birth", "race", "religion", "sex", "disability"],
-  employer: ["employer", "company", "manager", "supervisor", "job title", "worked at", "employee"],
-  basis: ["race", "pregnant", "pregnancy", "religion", "sex", "gender", "retaliation", "disability", "age", "color"],
-  dates: ["date", "month", "year", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"],
-  harm: ["fired", "terminated", "demoted", "write-up", "written up", "cut my hours", "harassed", "denied", "reassigned", "removed"],
-  comparators: ["others", "coworkers", "co-workers", "same job", "treated differently", "similarly situated"],
+  employer: ["employer", "company", "manager", "supervisor", "job title", "worked at", "employee", "firm"],
+  basis: ["race", "pregnant", "pregnancy", "religion", "sex", "gender", "retaliation", "disability", "age", "color", "national origin"],
+  dates: ["date", "month", "year", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "2024", "2025", "2026"],
+  harm: ["fired", "terminated", "demoted", "write-up", "written up", "cut my hours", "harassed", "denied", "reassigned", "removed", "taken off", "retaliated"],
+  comparators: ["others", "coworkers", "co-workers", "same job", "treated differently", "similarly situated", "comparator"],
   complaints: ["complained", "reported", "hr", "human resources", "retaliated", "internal complaint"],
-  witnesses: ["witness", "email", "text", "record", "document", "write-up", "proof"],
+  witnesses: ["witness", "email", "text", "record", "document", "write-up", "proof", "screenshot"],
   particulars: ["because", "after", "then", "when", "timeline", "happened"]
 };
+
+const stepDefinitions = [
+  {
+    id: "employer",
+    title: "Add employer name and work setting",
+    description: "Identify the employer, company, firm, agency, or supervisor involved.",
+    filterCategory: "recommended",
+    urgency: "urgent",
+    estimatedMinutes: 2,
+    actionLabel: "Needed for intake form",
+    match: (text) => /\bemployer\b|\bcompany\b|\bfirm\b|\bworked at\b|\bmanager\b|\bsupervisor\b/.test(text)
+  },
+  {
+    id: "basis",
+    title: "Identify at least one protected basis",
+    description: "Clarify whether the issue involves race, sex, pregnancy, disability, religion, retaliation, age, or another protected basis.",
+    filterCategory: "recommended",
+    urgency: "urgent",
+    estimatedMinutes: 2,
+    actionLabel: "Needed to frame the claim",
+    match: (text) => /\brace\b|\bpregnan|\bsex\b|\bgender\b|\breligion\b|\bdisabil|\bage\b|\bretaliation\b|\bcolor\b|\bnational origin\b/.test(text)
+  },
+  {
+    id: "date",
+    title: "Add at least one incident date",
+    description: "Include a date, month, year, or time period for the harmful action.",
+    filterCategory: "recommended",
+    urgency: "urgent",
+    estimatedMinutes: 1,
+    actionLabel: "Needed for timing and deadlines",
+    match: (text) => /\b(20\d{2})\b|\bjanuary\b|\bfebruary\b|\bmarch\b|\bapril\b|\bmay\b|\bjune\b|\bjuly\b|\baugust\b|\bseptember\b|\boctober\b|\bnovember\b|\bdecember\b|\blast week\b|\btwo weeks later\b/.test(text)
+  },
+  {
+    id: "harm",
+    title: "Describe the harmful action",
+    description: "State what happened: firing, removal from projects, demotion, reduced hours, harassment, denial, or retaliation.",
+    filterCategory: "recommended",
+    urgency: "urgent",
+    estimatedMinutes: 3,
+    actionLabel: "Needed for particulars section",
+    match: (text) => /\bfired\b|\bterminated\b|\bremoved\b|\btaken off\b|\bcut my hours\b|\bdemoted\b|\bharassed\b|\bdenied\b|\bretaliated\b|\bwrite-up\b/.test(text)
+  },
+  {
+    id: "particulars",
+    title: "Generate the final complaint narrative",
+    description: "Use the facts collected so far to create a filing-style narrative.",
+    filterCategory: "recommended",
+    urgency: "normal",
+    estimatedMinutes: 2,
+    actionLabel: "Useful before exporting",
+    match: () => !!getLatestFinalDocument()
+  },
+  {
+    id: "comparators",
+    title: "Add comparator information",
+    description: "Identify similarly situated coworkers who were treated better.",
+    filterCategory: "optional",
+    urgency: "normal",
+    estimatedMinutes: 3,
+    actionLabel: "Strengthens disparate treatment",
+    match: (text) => /\bcoworkers\b|\bco-workers\b|\bsame job\b|\bsimilarly situated\b|\btreated differently\b|\bothers\b/.test(text)
+  },
+  {
+    id: "complaints",
+    title: "Add internal complaint details",
+    description: "State whether you complained to HR, leadership, or management and what happened afterward.",
+    filterCategory: "recommended",
+    urgency: "normal",
+    estimatedMinutes: 2,
+    actionLabel: "Important for retaliation theories",
+    match: (text) => /\bcomplained\b|\breported\b|\bhr\b|\bhuman resources\b|\binternal complaint\b/.test(text)
+  },
+  {
+    id: "witnesses",
+    title: "Add witnesses or supporting documents",
+    description: "Include emails, texts, screenshots, witnesses, write-ups, or records.",
+    filterCategory: "optional",
+    urgency: "normal",
+    estimatedMinutes: 4,
+    actionLabel: "Helpful evidentiary support",
+    match: (text) => /\bwitness\b|\bemail\b|\btext\b|\bscreenshot\b|\bdocument\b|\bproof\b|\brecord\b|\bwrite-up\b/.test(text)
+  }
+];
+
+let currentFilter = "recommended";
+
+function buildSteps() {
+  const allText = history.map((m) => m.content.toLowerCase()).join(" ");
+
+  return stepDefinitions.map((step) => ({
+    ...step,
+    completed: Boolean(step.match(allText))
+  }));
+}
+
+function getCompletedSteps() {
+  return buildSteps().filter((step) => step.completed);
+}
+
+function getClaimFacts() {
+  const allText = history.map((m) => m.content.toLowerCase()).join(" ");
+
+  return {
+    hasEmployer: /\bemployer\b|\bcompany\b|\bfirm\b|\bworked at\b|\bmanager\b|\bsupervisor\b/.test(allText),
+    hasBasis: /\brace\b|\bpregnan|\bsex\b|\bgender\b|\breligion\b|\bdisabil|\bage\b|\bretaliation\b|\bcolor\b|\bnational origin\b/.test(allText),
+    hasDate: /\b(20\d{2})\b|\bjanuary\b|\bfebruary\b|\bmarch\b|\bapril\b|\bmay\b|\bjune\b|\bjuly\b|\baugust\b|\bseptember\b|\boctober\b|\bnovember\b|\bdecember\b|\blast week\b|\btwo weeks later\b/.test(allText),
+    hasHarm: /\bfired\b|\bterminated\b|\bremoved\b|\btaken off\b|\bcut my hours\b|\bdemoted\b|\bharassed\b|\bdenied\b|\bretaliated\b|\bwrite-up\b/.test(allText),
+    hasComplaint: /\bcomplained\b|\breported\b|\bhr\b|\bhuman resources\b|\binternal complaint\b/.test(allText),
+    hasWitnesses: /\bwitness\b|\bemail\b|\btext\b|\bscreenshot\b|\bdocument\b|\bproof\b|\brecord\b|\bwrite-up\b/.test(allText),
+    hasComparators: /\bcoworkers\b|\bco-workers\b|\bsame job\b|\bsimilarly situated\b|\btreated differently\b|\bothers\b/.test(allText),
+    hasFinalComplaint: !!getLatestFinalDocument()
+  };
+}
+
+function getRiskFlags() {
+  const facts = getClaimFacts();
+  const flags = [];
+
+  if (!facts.hasEmployer) {
+    flags.push({
+      level: "high",
+      text: "No employer or workplace entity identified yet."
+    });
+  }
+
+  if (!facts.hasBasis) {
+    flags.push({
+      level: "high",
+      text: "No protected basis identified yet."
+    });
+  }
+
+  if (!facts.hasDate) {
+    flags.push({
+      level: "high",
+      text: "No incident date or time period identified yet."
+    });
+  }
+
+  if (!facts.hasHarm) {
+    flags.push({
+      level: "high",
+      text: "No adverse action or harmful treatment described yet."
+    });
+  }
+
+  if (!facts.hasComplaint) {
+    flags.push({
+      level: "medium",
+      text: "No internal complaint details captured yet. This can matter for retaliation."
+    });
+  }
+
+  if (!facts.hasWitnesses) {
+    flags.push({
+      level: "medium",
+      text: "No witnesses, emails, texts, or documents identified yet."
+    });
+  }
+
+  return flags;
+}
+
+function getBadges() {
+  const facts = getClaimFacts();
+  const badges = [];
+
+  if (history.filter((m) => m.role === "user").length > 0) {
+    badges.push("Intake Started");
+  }
+
+  if (facts.hasEmployer && facts.hasBasis) {
+    badges.push("Core Facts Captured");
+  }
+
+  if (facts.hasDate && facts.hasHarm) {
+    badges.push("Timeline Built");
+  }
+
+  if (facts.hasFinalComplaint) {
+    badges.push("Final Complaint Generated");
+  }
+
+  if (isReadyToFile()) {
+    badges.push("Ready to File");
+  }
+
+  return badges;
+}
+
+function isReadyToFile() {
+  const facts = getClaimFacts();
+  return facts.hasEmployer && facts.hasBasis && facts.hasDate && facts.hasHarm && facts.hasFinalComplaint;
+}
+
+function formatMinutes(minutes) {
+  if (minutes <= 1) return "1 min remaining";
+  return `${minutes} min remaining`;
+}
+
+function renderRiskFlags() {
+  const flags = getRiskFlags();
+  riskCount.textContent = String(flags.length);
+
+  if (!flags.length) {
+    riskFlagsContainer.innerHTML = `<div class="empty-state">No major missing items detected yet.</div>`;
+    return;
+  }
+
+  riskFlagsContainer.innerHTML = flags
+    .map((flag) => `<div class="risk-flag ${flag.level}">${flag.text}</div>`)
+    .join("");
+}
+
+function renderBadges() {
+  const badges = getBadges();
+
+  if (!badges.length) {
+    badgesContainer.innerHTML = `<div class="empty-state">Milestones will appear as facts are completed.</div>`;
+    return;
+  }
+
+  badgesContainer.innerHTML = badges
+    .map((badge) => `<span class="badge-chip">${badge}</span>`)
+    .join("");
+}
+
+function renderSteps() {
+  const steps = buildSteps();
+
+  let filteredSteps = [];
+
+  if (currentFilter === "urgent") {
+    filteredSteps = steps.filter((step) => step.urgency === "urgent" && !step.completed);
+  } else if (currentFilter === "optional") {
+    filteredSteps = steps.filter((step) => step.filterCategory === "optional" && !step.completed);
+  } else if (currentFilter === "archived") {
+    filteredSteps = steps.filter((step) => step.completed);
+  } else {
+    filteredSteps = steps.filter((step) => step.filterCategory !== "optional" && !step.completed);
+  }
+
+  if (!filteredSteps.length) {
+    stepsContainer.innerHTML = `<div class="empty-state">${
+      currentFilter === "archived"
+        ? "Completed items will appear here."
+        : "No steps in this view right now."
+    }</div>`;
+    return;
+  }
+
+  stepsContainer.innerHTML = filteredSteps
+    .map((step) => {
+      const archivedClass = step.completed ? "archived" : "";
+      const optionalClass = step.filterCategory === "optional" ? "optional" : "";
+      const urgentClass = step.urgency === "urgent" ? "urgent" : "";
+
+      return `
+        <div class="step-card ${urgentClass} ${optionalClass} ${archivedClass}">
+          <div class="step-top">
+            <div class="step-title-wrap">
+              <div class="step-title">${step.title}</div>
+              <div class="step-meta-row">
+                <span class="step-pill">${step.filterCategory}</span>
+                <span class="step-pill">${step.urgency}</span>
+                <span class="step-pill">${step.estimatedMinutes} min</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="step-desc">${step.description}</div>
+
+          <div class="step-footer">
+            <span class="step-action-label">${step.actionLabel}</span>
+            <label class="step-check">
+              <input type="checkbox" ${step.completed ? "checked" : ""} disabled />
+              <span>${step.completed ? "Done" : "Pending"}</span>
+            </label>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function updateStepsMeta() {
+  const steps = buildSteps();
+  const completedCount = steps.filter((step) => step.completed).length;
+  const total = steps.length;
+  const percent = Math.round((completedCount / total) * 100);
+  const remainingMinutes = steps
+    .filter((step) => !step.completed)
+    .reduce((sum, step) => sum + step.estimatedMinutes, 0);
+
+  stepsProgressText.textContent = `${percent}% complete`;
+  stepsTimeText.textContent = formatMinutes(remainingMinutes);
+
+  if (isReadyToFile()) {
+    readyIndicator.classList.remove("hidden");
+  } else {
+    readyIndicator.classList.add("hidden");
+  }
+}
 
 function renderMessage(role, content) {
   const div = document.createElement("div");
@@ -65,6 +380,12 @@ function setLoadingState(isLoading) {
   sendBtn.disabled = isLoading;
   finalDocBtn.disabled = isLoading;
   pdfBtn.disabled = isLoading;
+
+  if (copyBtn) copyBtn.disabled = isLoading;
+  if (calendarBtn) calendarBtn.disabled = isLoading;
+  if (reminderBtn) reminderBtn.disabled = isLoading;
+  if (emailBtn) emailBtn.disabled = isLoading;
+
   sendBtn.textContent = isLoading ? "Sending..." : "Send";
 }
 
@@ -88,7 +409,7 @@ function openChat() {
 }
 
 function updateProgress() {
-  if (!progressFill || !progressPercent || !summaryContent || !sectionItems.length) return;
+  if (!progressFill || !progressPercent || !sectionItems.length) return;
 
   const allText = history.map((m) => m.content.toLowerCase()).join(" ");
   let completed = 0;
@@ -110,17 +431,10 @@ function updateProgress() {
   progressFill.style.width = `${percent}%`;
   progressPercent.textContent = `${percent}%`;
 
-  if (history.length <= 1) {
-    summaryContent.textContent = "No facts captured yet.";
-    return;
-  }
-
-  const userMessages = history
-    .filter((msg) => msg.role === "user")
-    .map((msg) => `• ${msg.content}`)
-    .slice(-6);
-
-  summaryContent.textContent = userMessages.join("\n");
+  renderRiskFlags();
+  renderBadges();
+  renderSteps();
+  updateStepsMeta();
 }
 
 function escapeHtml(str) {
@@ -242,7 +556,7 @@ function formatComplaintDocumentToHtml(text) {
 
     if (
       trimmed === "WORKPLACE DISCRIMINATION / RETALIATION INTAKE SUMMARY" ||
-      /^\\d+\\.\\s[A-Z][A-Z\\s/()\\-]+$/.test(trimmed)
+      /^\d+\.\s[A-Z][A-Z\s/()\-\u2014]+$/.test(trimmed)
     ) {
       return `<h2>${trimmed}</h2>`;
     }
@@ -328,6 +642,61 @@ function downloadPDF() {
   win.print();
 }
 
+function copyFinalComplaint() {
+  const finalDocument = getLatestFinalDocument() || buildFallbackDocument();
+  navigator.clipboard.writeText(finalDocument).catch(() => {});
+}
+
+function buildGoogleCalendarLink(title, details) {
+  const start = "20260424T170000Z";
+  const end = "20260424T173000Z";
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: title,
+    dates: `${start}/${end}`,
+    details
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function buildOutlookCalendarLink(title, details) {
+  const start = encodeURIComponent("2026-04-24T13:00:00");
+  const end = encodeURIComponent("2026-04-24T13:30:00");
+  return `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${encodeURIComponent(title)}&startdt=${start}&enddt=${end}&body=${encodeURIComponent(details)}`;
+}
+
+function downloadICS(title, description) {
+  const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Claim Builder//EN
+BEGIN:VEVENT
+UID:${Date.now()}@claimbuilder.local
+DTSTAMP:20260417T120000Z
+DTSTART:20260424T170000Z
+DTEND:20260424T173000Z
+SUMMARY:${title}
+DESCRIPTION:${description.replace(/\n/g, "\\n")}
+END:VEVENT
+END:VCALENDAR`;
+
+  const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "claim-builder-reminder.ics";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function emailDraft() {
+  const finalDocument = getLatestFinalDocument() || buildFallbackDocument();
+  const subject = encodeURIComponent("EEOC Claim Draft for Review");
+  const body = encodeURIComponent(finalDocument);
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
 async function sendMessage(message) {
   if (!message || !message.trim()) return;
 
@@ -370,6 +739,40 @@ async function sendMessage(message) {
 if (minimizeBtn) minimizeBtn.addEventListener("click", minimizeChat);
 if (chatLauncher) chatLauncher.addEventListener("click", openChat);
 if (pdfBtn) pdfBtn.addEventListener("click", downloadPDF);
+
+if (copyBtn) {
+  copyBtn.addEventListener("click", copyFinalComplaint);
+}
+
+if (emailBtn) {
+  emailBtn.addEventListener("click", emailDraft);
+}
+
+if (calendarBtn) {
+  calendarBtn.addEventListener("click", () => {
+    const details = "Review filing deadline and complete remaining claim-builder steps.";
+    const googleLink = buildGoogleCalendarLink("EEOC Filing Deadline", details);
+    window.open(googleLink, "_blank");
+  });
+}
+
+if (reminderBtn) {
+  reminderBtn.addEventListener("click", () => {
+    downloadICS(
+      "Claim Builder Follow-Up Reminder",
+      "Return to the claim builder, review missing facts, and finalize the complaint draft."
+    );
+  });
+}
+
+filterButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    filterButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    renderSteps();
+  });
+});
 
 renderMessage("assistant", history[0].content);
 updateProgress();
