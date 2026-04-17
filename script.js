@@ -21,12 +21,12 @@ let history = [
 
 renderMessage("assistant", history[0].content);
 
-function sendStarter(text) {
+function fillPrompt(text) {
   input.value = text;
-  form.requestSubmit();
+  input.focus();
 }
 
-window.fillPrompt = sendStarter;
+window.fillPrompt = fillPrompt;
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
