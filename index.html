@@ -1,17 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workplace Discrimination Claim Builder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <h1>Workplace Discrimination Claim Builder</h1>
+      <p class="subtext">
+        Describe what happened at work and get help organizing your story.
+      </p>
+
+      <div class="disclaimer">
+        This tool provides general information and drafting help only. It is not legal advice and does not create an attorney-client relationship.
+      </div>
+
 <div class="starter-prompts">
   <button type="button" class="starter-btn" onclick="fillPrompt('I am trying to file a discrimination claim')">
-    I am trying to file a discrimination claim
+    File a discrimination claim
   </button>
 
   <button type="button" class="starter-btn" onclick="fillPrompt('I was fired and think it was discrimination')">
-    I was fired and think it was discrimination
+    Wrongful termination
   </button>
 
   <button type="button" class="starter-btn" onclick="fillPrompt('My employer retaliated after I complained')">
-    My employer retaliated after I complained
+    Retaliation
   </button>
 
   <button type="button" class="starter-btn" onclick="fillPrompt('Help me organize my EEOC complaint')">
-    Help me organize my EEOC complaint
+    Organize EEOC complaint
   </button>
 </div>
+
+      <div id="chat" class="chat"></div>
+
+      <form id="chat-form" class="chat-form">
+        <textarea
+          id="user-input"
+          placeholder="Tell your story here..."
+          rows="4"
+          required
+        ></textarea>
+        <button type="submit" id="send-btn">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
