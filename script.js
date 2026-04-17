@@ -32,6 +32,8 @@ let history = [
   }
 ];
 
+let aiSuggestedSteps = [];
+
 const progressKeywords = {
   personal: ["name", "phone", "email", "address", "birth", "race", "religion", "sex", "disability"],
   employer: ["employer", "company", "manager", "supervisor", "job title", "worked at", "employee", "firm"],
@@ -53,6 +55,7 @@ const stepDefinitions = [
     urgency: "urgent",
     estimatedMinutes: 2,
     actionLabel: "Needed for intake form",
+    isMissingElement: true,
     match: (text) => /\bemployer\b|\bcompany\b|\bfirm\b|\bworked at\b|\bmanager\b|\bsupervisor\b/.test(text)
   },
   {
@@ -63,6 +66,7 @@ const stepDefinitions = [
     urgency: "urgent",
     estimatedMinutes: 2,
     actionLabel: "Needed to frame the claim",
+    isMissingElement: true,
     match: (text) => /\brace\b|\bpregnan|\bsex\b|\bgender\b|\breligion\b|\bdisabil|\bage\b|\bretaliation\b|\bcolor\b|\bnational origin\b/.test(text)
   },
   {
@@ -73,6 +77,7 @@ const stepDefinitions = [
     urgency: "urgent",
     estimatedMinutes: 1,
     actionLabel: "Needed for timing and deadlines",
+    isMissingElement: true,
     match: (text) => /\b(20\d{2})\b|\bjanuary\b|\bfebruary\b|\bmarch\b|\bapril\b|\bmay\b|\bjune\b|\bjuly\b|\baugust\b|\bseptember\b|\boctober\b|\bnovember\b|\bdecember\b|\blast week\b|\btwo weeks later\b/.test(text)
   },
   {
@@ -83,6 +88,7 @@ const stepDefinitions = [
     urgency: "urgent",
     estimatedMinutes: 3,
     actionLabel: "Needed for particulars section",
+    isMissingElement: true,
     match: (text) => /\bfired\b|\bterminated\b|\bremoved\b|\btaken off\b|\bcut my hours\b|\bdemoted\b|\bharassed\b|\bdenied\b|\bretaliated\b|\bwrite-up\b/.test(text)
   },
   {
@@ -93,6 +99,7 @@ const stepDefinitions = [
     urgency: "normal",
     estimatedMinutes: 2,
     actionLabel: "Useful before exporting",
+    isMissingElement: false,
     match: () => !!getLatestFinalDocument()
   },
   {
@@ -103,6 +110,7 @@ const stepDefinitions = [
     urgency: "normal",
     estimatedMinutes: 3,
     actionLabel: "Strengthens disparate treatment",
+    isMissingElement: false,
     match: (text) => /\bcoworkers\b|\bco-workers\b|\bsame job\b|\bsimilarly situated\b|\btreated differently\b|\bothers\b/.test(text)
   },
   {
@@ -113,6 +121,7 @@ const stepDefinitions = [
     urgency: "normal",
     estimatedMinutes: 2,
     actionLabel: "Important for retaliation theories",
+    isMissingElement: false,
     match: (text) => /\bcomplained\b|\breported\b|\bhr\b|\bhuman resources\b|\binternal complaint\b/.test(text)
   },
   {
@@ -123,27 +132,19 @@ const stepDefinitions = [
     urgency: "normal",
     estimatedMinutes: 4,
     actionLabel: "Helpful evidentiary support",
+    isMissingElement: false,
     match: (text) => /\bwitness\b|\bemail\b|\btext\b|\bscreenshot\b|\bdocument\b|\bproof\b|\brecord\b|\bwrite-up\b/.test(text)
   }
 ];
 
 let currentFilter = "recommended";
 
-function buildSteps() {
-  const allText = history.map((m) => m.content.toLowerCase()).join(" ");
-
-  return stepDefinitions.map((step) => ({
-    ...step,
-    completed: Boolean(step.match(allText))
-  }));
-}
-
-function getCompletedSteps() {
-  return buildSteps().filter((step) => step.completed);
+function getAllHistoryText() {
+  return history.map((m) => m.content.toLowerCase()).join(" ");
 }
 
 function getClaimFacts() {
-  const allText = history.map((m) => m.content.toLowerCase()).join(" ");
+  const allText = getAllHistoryText();
 
   return {
     hasEmployer: /\bemployer\b|\bcompany\b|\bfirm\b|\bworked at\b|\bmanager\b|\bsupervisor\b/.test(allText),
@@ -155,6 +156,148 @@ function getClaimFacts() {
     hasComparators: /\bcoworkers\b|\bco-workers\b|\bsame job\b|\bsimilarly situated\b|\btreated differently\b|\bothers\b/.test(allText),
     hasFinalComplaint: !!getLatestFinalDocument()
   };
+}
+
+function extractNextStepsFromResponse(text) {
+  if (!text) return [];
+
+  const lower = text.toLowerCase();
+  if (!lower.includes("next step")) return [];
+
+  const lines = text.split("\n");
+  const nextSteps = [];
+  let inNextStepsSection = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const lowerLine = line.toLowerCase();
+
+    if (lowerLine.includes("next steps")) {
+      inNextStepsSection = true;
+      continue;
+    }
+
+    if (!inNextStepsSection) continue;
+
+    const isBullet = line.startsWith("-") || /^\d+\./.test(line);
+    const looksLikeNewSection =
+      /^[A-Z][A-Z\s/()\-:]+$/.test(line) ||
+      /^\d+\.\s[A-Z]/.test(line);
+
+    if (looksLikeNewSection && !isBullet) {
+      break;
+    }
+
+    if (isBullet) {
+      const cleaned = line.replace(/^[-\d.\s]+/, "").trim();
+      if (cleaned) nextSteps.push(cleaned);
+    }
+  }
+
+  return nextSteps;
+}
+
+function classifyAIStepUrgency(text) {
+  const t = text.toLowerCase();
+
+  if (
+    t.includes("deadline") ||
+    t.includes("date") ||
+    t.includes("timing") ||
+    t.includes("protected basis") ||
+    t.includes("protected class") ||
+    t.includes("employer") ||
+    t.includes("adverse action") ||
+    t.includes("harmful action") ||
+    t.includes("harm") ||
+    t.includes("retaliation details")
+  ) {
+    return "urgent";
+  }
+
+  if (
+    t.includes("witness") ||
+    t.includes("document") ||
+    t.includes("evidence") ||
+    t.includes("screenshot") ||
+    t.includes("email") ||
+    t.includes("text message") ||
+    t.includes("comparator")
+  ) {
+    return "optional";
+  }
+
+  return "normal";
+}
+
+function getAIStepCompletion(text, facts, allText) {
+  const t = text.toLowerCase();
+
+  if (t.includes("employer")) return facts.hasEmployer;
+  if (t.includes("protected basis") || t.includes("protected class") || t.includes("basis")) return facts.hasBasis;
+  if (t.includes("date") || t.includes("timeline") || t.includes("time period")) return facts.hasDate;
+  if (t.includes("adverse action") || t.includes("harmful action") || t.includes("harm") || t.includes("what happened")) return facts.hasHarm;
+  if (t.includes("complaint") || t.includes("hr") || t.includes("reported")) return facts.hasComplaint;
+  if (t.includes("witness") || t.includes("document") || t.includes("evidence") || t.includes("email") || t.includes("text") || t.includes("screenshot")) return facts.hasWitnesses;
+  if (t.includes("comparator") || t.includes("coworker") || t.includes("similarly situated")) return facts.hasComparators;
+  if (t.includes("final complaint") || t.includes("narrative") || t.includes("draft")) return facts.hasFinalComplaint;
+
+  return allText.includes(t);
+}
+
+function getAIStepMissingElement(text) {
+  const t = text.toLowerCase();
+
+  return (
+    t.includes("employer") ||
+    t.includes("protected basis") ||
+    t.includes("protected class") ||
+    t.includes("basis") ||
+    t.includes("date") ||
+    t.includes("timeline") ||
+    t.includes("adverse action") ||
+    t.includes("harmful action") ||
+    t.includes("harm")
+  );
+}
+
+function buildSteps() {
+  const allText = getAllHistoryText();
+  const facts = getClaimFacts();
+
+  const baseSteps = stepDefinitions.map((step) => ({
+    ...step,
+    completed: Boolean(step.match(allText))
+  }));
+
+  const existingTitles = new Set(baseSteps.map((s) => s.title.toLowerCase()));
+
+  const dynamicSteps = aiSuggestedSteps
+    .filter((text) => !existingTitles.has(text.toLowerCase()))
+    .map((text, index) => {
+      const urgency = classifyAIStepUrgency(text);
+      const isMissingElement = getAIStepMissingElement(text);
+
+      return {
+        id: `ai-${index}`,
+        title: text,
+        description: isMissingElement
+          ? "AI flagged this as a missing legal element or core filing detail."
+          : "Suggested by AI after reviewing your claim.",
+        filterCategory: urgency === "optional" ? "optional" : "recommended",
+        urgency,
+        estimatedMinutes: urgency === "urgent" ? 1 : 2,
+        actionLabel: isMissingElement ? "Missing legal element" : "AI suggested",
+        isMissingElement,
+        completed: getAIStepCompletion(text, facts, allText)
+      };
+    });
+
+  return [...baseSteps, ...dynamicSteps];
+}
+
+function getCompletedSteps() {
+  return buildSteps().filter((step) => step.completed);
 }
 
 function getRiskFlags() {
@@ -299,6 +442,9 @@ function renderSteps() {
       const archivedClass = step.completed ? "archived" : "";
       const optionalClass = step.filterCategory === "optional" ? "optional" : "";
       const urgentClass = step.urgency === "urgent" ? "urgent" : "";
+      const missingElementPill = step.isMissingElement
+        ? `<span class="step-pill">missing legal element</span>`
+        : "";
 
       return `
         <div class="step-card ${urgentClass} ${optionalClass} ${archivedClass}">
@@ -309,6 +455,7 @@ function renderSteps() {
                 <span class="step-pill">${step.filterCategory}</span>
                 <span class="step-pill">${step.urgency}</span>
                 <span class="step-pill">${step.estimatedMinutes} min</span>
+                ${missingElementPill}
               </div>
             </div>
           </div>
@@ -332,7 +479,7 @@ function updateStepsMeta() {
   const steps = buildSteps();
   const completedCount = steps.filter((step) => step.completed).length;
   const total = steps.length;
-  const percent = Math.round((completedCount / total) * 100);
+  const percent = total ? Math.round((completedCount / total) * 100) : 0;
   const remainingMinutes = steps
     .filter((step) => !step.completed)
     .reduce((sum, step) => sum + step.estimatedMinutes, 0);
@@ -411,7 +558,7 @@ function openChat() {
 function updateProgress() {
   if (!progressFill || !progressPercent || !sectionItems.length) return;
 
-  const allText = history.map((m) => m.content.toLowerCase()).join(" ");
+  const allText = getAllHistoryText();
   let completed = 0;
 
   sectionItems.forEach((item) => {
@@ -725,6 +872,12 @@ async function sendMessage(message) {
     }
 
     const reply = data.reply || "I’m sorry, something went wrong.";
+
+    const extractedSteps = extractNextStepsFromResponse(reply);
+    if (extractedSteps.length) {
+      aiSuggestedSteps = extractedSteps;
+    }
+
     renderMessage("assistant", reply);
     history.push({ role: "assistant", content: reply });
     updateProgress();
@@ -789,7 +942,7 @@ form.addEventListener("submit", async (e) => {
 
 if (finalDocBtn) {
   finalDocBtn.addEventListener("click", async () => {
-    const prompt = "Generate the final complaint document based on the information I have given so far.";
+    const prompt = `Generate the final complaint document based on the information I have given so far. At the end, include a section titled "Next Steps" with bullet points listing what the user should do next.`;
     await sendMessage(prompt);
   });
 }
